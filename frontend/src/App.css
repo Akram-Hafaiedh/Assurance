@@ -1,0 +1,9 @@
+.custom-select__option--is-disabled {
+    background-color: #e0f7fa;
+    color: #00796b;
+}
+
+.custom-select__option--is-selected {
+    background-color: #b3e5fc;
+    color: #0277bd;
+}

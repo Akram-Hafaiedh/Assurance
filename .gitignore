@@ -1,0 +1,53 @@
+# Logs
+frontend/logs
+frontend/*.log
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/pnpm-debug.log*
+frontend/lerna-debug.log*
+
+fontend/node_modules
+fontend/dist
+fontend/dist-ssr
+fontend/*.local
+
+# Editor directories and files
+frontend/.vscode/*
+frontend/!.vscode/extensions.json
+frontend/.idea
+frontend/.DS_Store
+frontend/*.suo
+frontend/*.ntvs*
+frontend/*.njsproj
+frontend/*.sln
+frontend/*.sw?
+frontend/*.env
+
+
+# Logs
+backend/logs
+backend/*.log
+backend/npm-debug.log*
+backend/yarn-debug.log*
+backend/yarn-error.log*
+backend/pnpm-debug.log*
+backend/lerna-debug.log*
+
+backend/build/Release
+
+# Dependency directories
+backend/node_modules/
+backend/jspm_packages/
+backend/.npm
+backend/.eslintcache
+backend/*.env
+backend/.vscode-test
+
+
+# yarn v2
+backend/.yarn/cache
+backend/.yarn/unplugged
+backend/.yarn/build-state.yml
+backend/.yarn/install-state.gz
+backend/.pnp.*
