@@ -2,6 +2,7 @@ import express, { Request, Response } from 'express';
 import { protect } from '../middleware/authMiddleware';
 import Project from '../models/Project';
 import Task from '../models/Task';
+import Event from '../models/Event';
 
 const router = express.Router();
 // Create a new project
@@ -77,8 +78,10 @@ router.get('/:projectId', protect, async (req: Request, res: Response) => {
             return res.status(200).json({ status: 404, data :{ message: 'Project not found' } });
         }
         const tasks = await Task.find({ project: req.params.projectId }).populate('assignedTo', 'email');
+        const events = await Event.find({ projectId: project._id }).sort({ createdAt: -1 });
 
-        res.status(200).json({ status: 200, data :{ message: 'Project fetched successfully', project: project, tasks: tasks } });
+
+        res.status(200).json({ status: 200, data :{ message: 'Project fetched successfully', project, tasks, events } });
     } catch (error) {
         res.status(500).json({ status: 500, data :{ message: 'Server error', error } });
     }

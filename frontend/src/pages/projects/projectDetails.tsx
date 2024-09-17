@@ -1,9 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import axios from 'axios';
+import Swal from 'sweetalert2';  // Import SweetAlert2
 import Sidebar from '../../components/Sidebar';
 import HomeLayout from '../../layouts/PrivateLayout';
 import { toast } from 'react-toastify';
+import useAxiosInstance from '../../hooks/useAxiosInstance';
+import TaskModal from '../../components/modals/TaskModal';
+import TaskCard from '../../components/TaskCard';
 
 interface Member {
     _id: string;
@@ -24,111 +27,149 @@ interface Project {
     createdDate: string;
     updatedDate: string;
 }
+
 interface Task {
-    _id: string;
+    _id?: string;
     title: string;
     description: string;
-    assignedTo: string;
+    assignedTo: { _id: string; email: string; };
     status: string;
     priority: string;
     dueDate: string;
-    createdDate: string;
-    updatedDate: string;
+    createdDate?: string;
+    updatedDate?: string;
 }
 const ProjectDetails: React.FC = () => {
-    const status = ['To Do', 'In Progress', 'Completed'];
-    const apiUrl = import.meta.env.VITE_REACT_APP_API_URL;
+    const axiosInstance = useAxiosInstance();
     const { projectId } = useParams();
     const [project, setProject] = useState<Project | null>(null);
     const [tasks, setTasks] = useState<Task[]>([]);
 
-    const [newTask, setNewTask] = useState({
-        name: '',
-        description: '',
-        assignedTo: '',
-        status: 'To Do',
-        priority: 'Low',
-        dueDate: '',
-    });
     const [events, setEvents] = useState<Event[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false); // Modal open state
     const [members, setMembers] = useState<Member[]>([]);
+    const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
+
+    const fetchEvents = useCallback(async () => {
+        try {
+            const response = await axiosInstance.get(`/projects/${projectId}/events`);
+            const eventsData = response.data.data.events;
+            setEvents(eventsData || []);
+        } catch (error) {
+            console.error('Error fetching events:', error);
+        }
+    }, [axiosInstance, projectId]);
+
+    const fetchProject = useCallback(async () => {
+        try {
+            const response = await axiosInstance.get(`/projects/${projectId}`);
+            const projectData = response.data.data;
+            setProject(projectData.project);
+            setTasks(projectData.tasks || []);  // Assuming tasks are part of the response
+            setMembers(projectData.project.members || []);
+            setEvents(projectData.events || []);
+        } catch (error) {
+            console.error('Error fetching project details:', error);
+        }
+    }, [axiosInstance, projectId]);
 
     useEffect(() => {
-        const fetchProject = async () => {
-            try {
-                const response = await axios.get(`${apiUrl}/projects/${projectId}`, {
-                    headers: {
-                        Authorization: `Bearer ${localStorage.getItem('token')}`,
-                    },
-                });
-                const projectData = response.data.data;
-                setProject(projectData.project);
-                setTasks(projectData.tasks || []);  // Assuming tasks are part of the response
-                setMembers(projectData.project.members || []);
-            } catch (error) {
-                console.error('Error fetching project details:', error);
-            }
-        };
         fetchProject();
-    }, [projectId, apiUrl]);
+    }, []);
 
-    const handleAddTask = async (e: React.FormEvent) => {
-        e.preventDefault();
+
+
+    const handleAddTask = async (task: Task) => {
         try {
-            const response = await axios.post(`${apiUrl}/projects/${projectId}/tasks/create`, newTask, {
-                headers: {
-                    Authorization: `Bearer ${localStorage.getItem('token')}`,
-                },
-            });
+            const response = await axiosInstance.post(`/projects/${projectId}/tasks/create`, task);
             if (response && response.data.status === 201) {
                 toast.success(response.data.data.message);
                 setTasks([...tasks, response.data.data.task]);
-                setNewTask({ name: '', description: '', assignedTo: '', status: 'To Do', priority: 'Low', dueDate: '' });
                 setIsModalOpen(false);
+                await fetchEvents();
             }
         } catch (error) {
             console.error('Error adding task:', error);
         }
     };
 
-    const handleDeleteTask = async (taskId: string) => {
+
+    const handleEditTask = async (task: Task) => {
         try {
-            await axios.delete(`/api/projects/${projectId}/tasks/${taskId}`);
-            setTasks(tasks.filter(task => task._id !== taskId));
+            const response = await axiosInstance.put(`/projects/${projectId}/tasks/${task._id}`, task);
+            if (response && response.data.status === 200) {
+                toast.success(response.data.data.message);
+                setTasks(tasks.map(t => t._id === task._id ? response.data.data.task : t));
+                setIsModalOpen(false);
+                setTaskToEdit(null);
+                await fetchEvents();
+            }
         } catch (error) {
-            console.error('Error deleting task:', error);
+            console.error('Error editing task:', error);
         }
-    };
+    }
+    const handleDeleteTask = async (taskId: string) => {
+        Swal.fire({
+            title: 'Are you sure?',
+            text: 'You will not be able to recover this task!',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, delete it!',
+            cancelButtonText: 'No, keep it',
+            customClass: {
+                container: 'font-base',
+                confirmButton: 'bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded',
+                cancelButton: 'bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded',
+                title: 'text-xxl font-semibold mb-2',
+            }
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                try {
+                    const response = await axiosInstance.delete(`/projects/${projectId}/tasks/${taskId}`);
+                    if (response && response.data.status === 200) {
+                        toast.success(response.data.data.message);
+                        setTasks(tasks.filter(task => task._id !== taskId));
+                        await fetchEvents(); 
+                    }
+                } catch (error) {
+                    console.error('Error deleting task:', error);
+                }
+            }
+        });
+    }
+
 
     const getTasksByStatus = (status: string) => tasks.filter(task => task.status === status);
     return (
         <HomeLayout sidebar={<Sidebar />}>
-            <div className="flex flex-col gap-4 p-4">
-                {project && <h1 className="text-3xl">{project.name}</h1>}
+            <div className="flex flex-col gap-4 min-h-screen-minus-6rem">
                 <div className="flex items-center justify-between">
-                    <h2 className="text-2xl font-bold">Tasks</h2>
+                    {project && <h2 className="text-2xl">{project.name} Tasks</h2>}
                     <button onClick={() => setIsModalOpen(true)} className="px-4 py-2 font-bold text-white bg-blue-500 rounded-md hover:bg-blue-700">
                         Add Task
                     </button>
                 </div>
                 {/* Grid Layout: 3 columns for tasks, 1 for events */}
-                <div className="grid grid-cols-4 gap-4">
-                    {status.map((statusColumn) => (
-                        <div key={statusColumn} className="p-4 bg-white rounded-lg shadow-md">
+                <div className="grid flex-grow grid-cols-4 gap-4">
+                    {['To Do', 'In Progress', 'Completed'].map((statusColumn) => (
+                        <div key={statusColumn} className="h-full p-4 bg-white rounded-lg shadow-md">
                             <h3 className="mb-2 text-xl font-bold">{statusColumn}</h3>
                             <ul className="flex flex-col gap-2">
-                                {getTasksByStatus(statusColumn).map((task) => (
-                                    <li key={task._id} className="flex justify-between p-2 border-b border-gray-300">
-                                        <span>{task.title}</span>
-                                        <button
-                                            onClick={() => handleDeleteTask(task._id)}
-                                            className="text-red-500 hover:text-red-700"
-                                        >
-                                            Delete
-                                        </button>
-                                    </li>
-                                ))}
+                                {getTasksByStatus(statusColumn).length > 0 ? (
+                                    getTasksByStatus(statusColumn).map(task => (
+                                        <TaskCard
+                                            key={task._id}
+                                            task={task}
+                                            onEdit={(task) => {
+                                                setTaskToEdit(task);
+                                                setIsModalOpen(true);
+                                            }}
+                                            onDelete={handleDeleteTask}
+                                        />
+                                    ))
+                                ) : (
+                                    <p className="text-gray-500">No tasks in this status.</p>
+                                )}
                             </ul>
                         </div>
                     ))}
@@ -152,99 +193,18 @@ const ProjectDetails: React.FC = () => {
                 </div>
 
                 {/* Modal */}
-                {isModalOpen && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-                        <div className="w-1/3 p-6 bg-white rounded-lg shadow-lg">
-                            <h2 className="mb-4 text-xl font-bold">Add New Task</h2>
-                            <form onSubmit={handleAddTask}>
-                                <label htmlFor="name">
-                                    Name
-                                    <input
-                                        type="text"
-                                        value={newTask.name}
-                                        onChange={(e) => setNewTask({ ...newTask, name: e.target.value })}
-                                        placeholder="New task name"
-                                        className="w-full p-2 mb-4 border border-gray-300 rounded-md"
-                                    />
-                                </label>
-                                <label htmlFor="description">
-                                    Description
-                                    <textarea
-                                        value={newTask.description}
-                                        onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
-                                        placeholder="New task description"
-                                        className="w-full p-2 mb-4 border border-gray-300 rounded-md"
-                                    />
-                                </label>
-                                <label htmlFor="assignedTo">
-                                    Assigned To
-                                    <select
-                                        value={newTask.assignedTo}
-                                        onChange={(e) => setNewTask({ ...newTask, assignedTo: e.target.value })}
-                                        className="w-full p-2 mb-4 border border-gray-300 rounded-md"
-                                    >
-                                        <option value="">Select a member</option>
-                                        {members.map((member) => (
-                                            <option key={member._id} value={member._id}>
-                                                {member.email}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </label>
-                                <label htmlFor="status">
-                                    Status
-                                    <select
-                                        value={newTask.status}
-                                        onChange={(e) => setNewTask({ ...newTask, status: e.target.value })}
-                                        className="w-full p-2 mb-4 border border-gray-300 rounded-md"
-                                    >
-                                        {status.map(status => (
-                                            <option key={status} value={status}>{status}</option>
-                                        ))}
-                                    </select>
-                                </label>
-                                <label htmlFor="priority">
-                                    Priority
-                                    <select
-                                        value={newTask.priority}
-                                        onChange={(e) => setNewTask({ ...newTask, priority: e.target.value })}
-                                        className="w-full p-2 mb-4 border border-gray-300 rounded-md"
-                                    >
-                                        <option value="Low">Low</option>
-                                        <option value="Medium">Medium</option>
-                                        <option value="High">High</option>
-                                    </select>
-                                </label>
-                                <label htmlFor="dueDate">
-                                    Due Date
-                                    <input
-                                        type="date"
-                                        value={newTask.dueDate}
-                                        onChange={(e) => setNewTask({ ...newTask, dueDate: e.target.value })}
-                                        className="w-full p-2 mb-4 border border-gray-300 rounded-md"
-                                    />
-                                </label>
-                                <div className="flex justify-end gap-2">
-                                    <button
-                                        onClick={() => setIsModalOpen(false)}
-                                        className="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300"
-                                    >
-                                        Cancel
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        className="px-4 py-2 text-white bg-blue-500 rounded-md hover:bg-blue-700"
-                                    >
-                                        Add Task
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                )}
+                <TaskModal
+                    isOpen={isModalOpen}
+                    onClose={() => setIsModalOpen(false)}
+                    onAddTask={handleAddTask}
+                    onEditTask={handleEditTask}
+                    task={taskToEdit}
+                    members={members}
+                />
             </div>
         </HomeLayout>
     );
+
 };
 
 export default ProjectDetails;

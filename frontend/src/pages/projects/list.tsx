@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
 import Sidebar from '../../components/Sidebar';
 import HomeLayout from '../../layouts/PrivateLayout';
 import { Switch } from '@headlessui/react';
 import AddMemberModal from '../../components/modals/AddMemberModal';
+import useAxiosInstance from '../../hooks/useAxiosInstance';
 
 
 
@@ -37,6 +37,7 @@ interface Project {
     updatedDate: string;
 }
 const ProjectListing: React.FC = () => {
+    const axiosInstance = useAxiosInstance();
     const [projects, setProjects] = useState<Project[]>([]);
     const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);
     const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState<boolean>(false);
@@ -49,19 +50,11 @@ const ProjectListing: React.FC = () => {
     const [itemsPerPage, setItemsPerPage] = useState<number>(10); // Items per page (limit)
     const [totalPages, setTotalPages] = useState<number>(1);
 
-    const apiUrl = import.meta.env.VITE_REACT_APP_API_URL;
 
     const fetchProjects = useCallback(async (page: number, limit: number, search: string) => {
         try {
-            const response = await axios.get(`${apiUrl}/projects`, {
-                params: {
-                    page,
-                    limit,
-                    search,
-                },
-                headers: {
-                    Authorization: `Bearer ${localStorage.getItem('token')}`,
-                },
+            const response = await axiosInstance.get('/projects', {
+                params: { page, limit, search }
             });
             setProjects(response.data.data.projects);
             setFilteredProjects(response.data.data.projects);
@@ -70,7 +63,7 @@ const ProjectListing: React.FC = () => {
         } catch (error) {
             console.error('Error fetching projects:', error);
         }
-    }, [apiUrl]);
+    }, [axiosInstance]);
 
     useEffect(() => {
         fetchProjects(currentPage, itemsPerPage, searchQuery);
@@ -78,11 +71,7 @@ const ProjectListing: React.FC = () => {
 
     const togglePrivacy = async (projectId: string, currentPrivacy: boolean) => {
         try {
-            const response = await axios.put(`${apiUrl}/projects/${projectId}`, { isPrivate: !currentPrivacy }, {
-                headers: {
-                    Authorization: `Bearer ${localStorage.getItem('token')}`,
-                }
-            });
+            const response = await axiosInstance.put(`/projects/${projectId}`, { isPrivate: !currentPrivacy });
             if (response && response.data.status === 200) {
                 setProjects((prevProjects) =>
                     prevProjects.map((project) =>
@@ -131,16 +120,7 @@ const ProjectListing: React.FC = () => {
 
     const saveProjectTitle = async (projectId: string) => {
         try {
-            const apiUrl = import.meta.env.VITE_REACT_APP_API_URL;
-            await axios.put(
-                `${apiUrl}/projects/${projectId}`,
-                { name: tempTitle },
-                {
-                    headers: {
-                        Authorization: `Bearer ${localStorage.getItem('token')}`,
-                    },
-                }
-            );
+            await axiosInstance.put(`/projects/${projectId}`, { name: tempTitle });
             // Update local project title after saving
             setProjects((prevProjects) =>
                 prevProjects.map((project) =>
@@ -159,11 +139,7 @@ const ProjectListing: React.FC = () => {
             if (!projectToUpdate) return;
 
             const updatedMembers = projectToUpdate.members.filter(member => member._id !== memberId);
-            const response = await axios.put(`${apiUrl}/projects/${projectId}`, { members: updatedMembers }, {
-                headers: {
-                    Authorization: `Bearer ${localStorage.getItem('token')}`,
-                }
-            });
+            const response = await axiosInstance.put(`/projects/${projectId}`, { members: updatedMembers });
             if (response && response.data.status === 200) {
                 // Update the local state with the new list of members
                 setProjects(prevProjects =>
@@ -183,11 +159,7 @@ const ProjectListing: React.FC = () => {
             const memberIds = selectedUsers.map(user => user._id);
             console.log(memberIds);
 
-            const response = await axios.put(`${apiUrl}/projects/${editingMemberProjectId}`, { members: memberIds }, {
-                headers: {
-                    Authorization: `Bearer ${localStorage.getItem('token')}`,
-                }
-            })
+            const response = await axiosInstance.put(`/projects/${editingMemberProjectId}`, { members: memberIds });
             console.log(response);
             if (response && response.data.status === 200) {
                 setProjects((prevProjects) =>
