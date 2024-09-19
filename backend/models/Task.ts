@@ -1,12 +1,13 @@
 import mongoose, { Document, Schema } from "mongoose";
 import { IProject } from "./Project";
 import { IUser } from "./User";
+import { ITaskGroup } from "./TaskGroup";
 export interface ITask extends Document {
     title : string;
     description : string;
-    project: IProject ['_id'];
-    assignedTo: IUser['_id'];
-    status: string;
+    projectId: IProject ['_id'];
+    assignedTo: IUser['_id'][];
+    taskGroup: ITaskGroup['_id'];
     priority: string;
     dueDate: Date;
     createdAt: Date;
@@ -16,9 +17,9 @@ export interface ITask extends Document {
 const taskSchema = new Schema<ITask>({
     title : { type: String, required: true },
     description : { type: String },
-    project: { type: Schema.Types.ObjectId, ref: 'Project', required: true },
-    assignedTo: { type: Schema.Types.ObjectId, ref: 'User' , required: true},
-    status: { type: String, enum: ['To Do', 'In Progress', 'Completed'], default: 'To Do'},
+    projectId: { type: Schema.Types.ObjectId, ref: 'Project', required: true },
+    assignedTo: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+    taskGroup: { type: Schema.Types.ObjectId, ref: 'TaskGroup', required: true},
     priority: { type: String, enum: ['Low', 'Medium', 'High'], default: 'Low'},
     dueDate: { type: Date },
 }, { timestamps: true });
