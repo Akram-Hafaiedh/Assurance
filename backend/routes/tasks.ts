@@ -1,10 +1,5 @@
 import express, { Request, Response } from 'express';
 import { protect } from '../middleware/authMiddleware';
-import Task from '../models/Task';
-import Project from '../models/Project';
-import User from '../models/User';
-import mongoose from 'mongoose';
-import Event from '../models/Event';
 import TaskService from '../services/TaskService';
 
 const router = express.Router();

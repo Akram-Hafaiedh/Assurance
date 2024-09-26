@@ -34,7 +34,10 @@ const Users: React.FC = () => {
     return (
         <HomeLayout sidebar={<Sidebar />}>
             <div>
-                <h1 className="mb-4 text-2xl font-bold">Users List</h1>
+                <div className="flex items-center justify-between">
+                    <h1 className="mb-4 text-2xl font-bold">Users List</h1>
+                    <button className="px-4 py-2 text-white bg-blue-500 rounded">Add User</button>
+                </div>
                 <table className="min-w-full bg-white table-auto">
                     <thead>
                         <tr>
