@@ -1,5 +1,6 @@
-import axios from "axios";
 import { createContext, useEffect, useState } from "react";
+import useAxiosInstance from "../utils/axiosInstance";
+import axios from "axios";
 interface User {
     email: string;
     role: string;
@@ -17,29 +18,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
 
-
     useEffect(() => {
-        const token = localStorage.getItem('token');
-        const storedUser = localStorage.getItem('user');
-        if (token && storedUser) {
-            setIsAuthenticated(true);
-            setUser(JSON.parse(storedUser));
+        try {
+            const token = localStorage.getItem('token');
+            const storedUser = localStorage.getItem('user');
+            if (token && storedUser) {
+                setIsAuthenticated(true);
+                setUser(JSON.parse(storedUser));
+            } else {
+                setIsAuthenticated(false);
+                setUser(null);
+            }
+        } catch (error) {
+            console.error('Error accessing localStorage:', error);
+            setIsAuthenticated(false);
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
-
-    }, [])
+    }, []);
 
     const login = async ({ token }: { token: string }) => {
+        console.log('login', token);
         setIsAuthenticated(true);
         localStorage.setItem('token', token);
         const apiUrl = import.meta.env.VITE_REACT_APP_API_URL;
         try {
+            // const response = await axios.get('/users/me');
             const response = await axios.get(`${apiUrl}/users/me`, {
                 headers: { Authorization: `Bearer ${token}` }
             })
-            const { email, role } = response.data.data.user;
-            localStorage.setItem('user', JSON.stringify({ email, role: role.name }));
-            setUser({ email, role: role.name });
+            if (response && response.data.status === 200) {
+                const { email, role } = response.data.data.user;
+                localStorage.setItem('user', JSON.stringify({ email, role: role.name }));
+                setUser({ email, role: role.name });
+            }
 
         } catch (error) {
             console.log('Error fetching user', error);
@@ -51,6 +63,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(null);
         localStorage.removeItem('token'); // Remove token from local storage
         localStorage.removeItem('user');
+    }
+
+    if (loading) {
+        return <div className="text-center spinner">Loading...</div>; // You can also show a spinner here
     }
 
     return (

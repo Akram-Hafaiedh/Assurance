@@ -65,9 +65,10 @@ const ProjectListing: React.FC = () => {
         }
     }, [axiosInstance]);
 
+
     useEffect(() => {
         fetchProjects(currentPage, itemsPerPage, searchQuery);
-    }, [currentPage, itemsPerPage, searchQuery, fetchProjects]);
+    }, [currentPage, itemsPerPage, searchQuery]);
 
     const togglePrivacy = async (projectId: string, currentPrivacy: boolean) => {
         try {
@@ -190,6 +191,7 @@ const ProjectListing: React.FC = () => {
             <div>
                 <div className="flex items-center justify-between">
                     <h1 className="mb-4 text-2xl font-bold">Projects</h1>
+                    {/* <button type="button" onClick={() => setIsModalOpen(true)} className="px-4 py-2 text-white bg-blue-500 rounded hover:bg-blue-700">Create New Project</button> */}
                     <Link to="/projects/create" className="px-4 py-2 text-white bg-blue-500 rounded hover:bg-blue-700">Create New Project</Link>
 
                 </div>
