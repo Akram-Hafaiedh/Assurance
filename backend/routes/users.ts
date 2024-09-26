@@ -1,7 +1,7 @@
 import express, { Request, Response } from 'express';
 import User from '../models/User';
-const router = express.Router();
 import { protect } from '../middleware/authMiddleware';
+const router = express.Router();
 
 
 // Get user profile
